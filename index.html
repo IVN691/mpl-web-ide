@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPL Web IDE</title>
+
+<style>
+body{
+    background:#111;
+    color:white;
+    font-family:Arial;
+    margin:0;
+    padding:20px;
+}
+
+h1{
+    margin-top:0;
+}
+
+textarea{
+    width:100%;
+    height:300px;
+    background:#1e1e1e;
+    color:#00ff88;
+    border:none;
+    padding:10px;
+    font-size:16px;
+    resize:none;
+    outline:none;
+}
+
+button{
+    margin-top:10px;
+    padding:10px 20px;
+    font-size:16px;
+    background:#00aa66;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#00cc77;
+}
+
+#output{
+    margin-top:20px;
+    background:black;
+    padding:10px;
+    min-height:200px;
+    white-space:pre-wrap;
+    border:1px solid #333;
+}
+</style>
+</head>
+
+<body>
+
+<h1>MPL Web IDE</h1>
+
+<textarea id="code">
+say("Hello MPL")
+
+use mplLibs.count
+
+count(0, 5)
+
+repeat(3){
+say("Hi")
+}
+</textarea>
+
+<br>
+<button onclick="runMPL()">Run</button>
+
+<div id="output"></div>
+
+<script>
+
+let functions = {}
+
+function print(text){
+    document.getElementById("output").innerText += text + "\n"
+}
+
+function say(text){
+    print(text)
+}
+
+function count_func(start, end){
+    for(let i = start; i <= end; i++){
+        print(i)
+    }
+}
+
+function loadLib(name){
+
+    name = name.replace("mplLibs.", "")
+
+    if(name === "count"){
+        functions["count"] = count_func
+        print("Library loaded: count")
+        return
+    }
+
+    print("Library not found: " + name)
+}
+
+function executeLine(line){
+
+    line = line.trim()
+
+    if(line === ""){
+        return
+    }
+
+    // use
+    if(line.startsWith("use ")){
+
+        let lib = line.substring(4).trim()
+        loadLib(lib)
+        return
+    }
+
+    // say()
+    if(line.startsWith("say(") && line.endsWith(")")){
+
+        let arg = line.substring(4, line.length - 1).trim()
+
+        if(
+            (arg.startsWith('"') && arg.endsWith('"')) ||
+            (arg.startsWith("'") && arg.endsWith("'"))
+        ){
+            arg = arg.substring(1, arg.length - 1)
+        }
+
+        say(arg)
+        return
+    }
+
+    // count()
+    if(line.startsWith("count(") && line.endsWith(")")){
+
+        if(!functions["count"]){
+            print("Error: count() requires mplLibs.count")
+            return
+        }
+
+        let args = line.substring(6, line.length - 1).split(",")
+
+        let start = parseInt(args[0].trim())
+        let end = parseInt(args[1].trim())
+
+        functions["count"](start, end)
+        return
+    }
+
+    print("Unknown command: " + line)
+}
+
+function runBlock(block, times){
+
+    for(let t = 0; t < times; t++){
+
+        for(let line of block){
+            executeLine(line)
+        }
+    }
+}
+
+function runMPL(){
+
+    document.getElementById("output").innerText = ""
+
+    functions = {}
+
+    let code = document.getElementById("code").value
+
+    let lines = code
+        .split("\n")
+        .map(l => l.trim())
+        .filter(l => l !== "")
+
+    let i = 0
+
+    while(i < lines.length){
+
+        let line = lines[i]
+
+        // repeat()
+        let match = line.match(/^repeat\((\d+)\)\{$/)
+
+        if(match){
+
+            let times = parseInt(match[1])
+
+            let block = []
+
+            i++
+
+            while(i < lines.length && lines[i] !== "}"){
+                block.push(lines[i])
+                i++
+            }
+
+            runBlock(block, times)
+
+        }else{
+            executeLine(line)
+        }
+
+        i++
+    }
+}
+
+</script>
+
+</body>
+</html>
